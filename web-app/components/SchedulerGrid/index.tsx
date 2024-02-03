@@ -1,73 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
-"use client"
+"use client";
 
 import React, { useRef, useState, useEffect } from 'react';
 import { IoSearch } from "react-icons/io5";
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa6";
 import { PiUserPlusBold } from "react-icons/pi";
-
-let users = [
-    {
-        name:"Etienne",
-        image:"profiles/2.png",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"1" },
-            { start: new Date(2024, 0, 1, 13, 0), end: new Date(2024, 0, 2, 15, 0), details:"" ,type:"1" },
-        ]
-    },
-    {
-        name:"Milos",
-        image:"profiles/1.png",
-        slots : [
-            { start: new Date(2024, 0, 17, 4, 0), end: new Date(2024, 0, 17, 15, 0), details:"" ,type:"2" },
-            { start: new Date(2024, 0, 18, 13, 0), end: new Date(2024, 0, 19, 15, 0), details:"" ,type:"1" },
-        ]
-    }
-    ,
-    {
-        name:"Renata",
-        image:"profiles/3.png",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"",type:"3"  },
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:"",type:"3" },
-        ]
-    }
-    ,
-    {
-        name:"Paul",
-        image:"profiles/4.png",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"1" },
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:"" ,type:"2" },
-        ]
-    }
-    ,
-    {
-        name:"Eliot",
-        image:"profiles/5.png",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"2" },
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:"" ,type:"1" },
-        ]
-    }
-    ,
-    {
-        name:"Sara",
-        image:"profiles/6.png",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"1" },
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:"" ,type:"3" },
-        ]
-    },
-    {
-        name:"Ayoub",
-        image:"profiles/7.png",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"2"},
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:""  ,type:"2"},
-        ]
-    }
-]
+import { UserComp } from '../UserComp';
+import { useRecoilState } from 'recoil';
+import { UserInfo, usersState } from '../../state/state'
 
 
 export function SchedulerGrid () {
@@ -76,6 +16,9 @@ export function SchedulerGrid () {
     const [timetableWidth, setTimetableWidth] = useState(0);
     const [selectedWeek, setSelectedWeek] = useState<Date>(new Date())
     const [searchName, setSearchName] = useState<string>("")
+    
+    const [users , setUsers] = useRecoilState(usersState)
+    const [selectedUser, setSelectedUser] = useState<UserInfo | undefined>(undefined)
 
     const updateWidth = () => {
         if (timetableRef.current) {
@@ -139,8 +82,7 @@ export function SchedulerGrid () {
                 <div key={index} style={{ left, width }} 
                 className="absolute bg-green-500 overflow-hidden h-12 p-1 pl-2 text-sm rounded-sm -top-6"
                 >
-                    {slot.start.toLocaleDateString()} {slot.start.toLocaleTimeString()} - 
-                    {slot.end.toLocaleDateString()} {slot.end.toLocaleTimeString()}
+                    { slot.detail } { slot.type }
                 </div>
             );
         });
@@ -205,7 +147,9 @@ export function SchedulerGrid () {
                             <div  className="
                             flex flex-row items-center gap-4 w-48 p-2 border-r overflow-hidden top-full
                             hover:bg-green-100
-                            "> 
+                            " 
+                            onClick={ e => setSelectedUser( u ) }
+                            > 
                                 <div className="w-12 h-12 rounded-full overflow-hidden">
                                     <img src={u.image} alt=""/>
                                 </div>
@@ -237,11 +181,13 @@ export function SchedulerGrid () {
                 ref={timetableRef}
                 className="border-left w-full relative top-0
                 flex flex-row justify-around
-                ">
-                                         
+                ">                        
                 </div>
             </div>
         </div>
+
+        { selectedUser && <UserComp user={ selectedUser }/> }
+
         </>
     );
 }
