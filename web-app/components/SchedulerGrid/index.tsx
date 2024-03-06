@@ -7,7 +7,7 @@ import { FaAngleLeft, FaAngleRight } from "react-icons/fa6";
 import { PiUserPlusBold } from "react-icons/pi";
 import { UserComp } from '../UserComp';
 import { useRecoilState } from 'recoil';
-import { UserInfo, usersState } from '../../state/state'
+import { UserInfo, ShiftInfo , load_schedules_state, usersState , shiftsState, UserSlot } from '../../state/state'
 
 
 export function SchedulerGrid () {
@@ -18,7 +18,13 @@ export function SchedulerGrid () {
     const [searchName, setSearchName] = useState<string>("")
     
     const [users , setUsers] = useRecoilState(usersState)
+    const [shifts , setShifts] = useRecoilState(shiftsState)
+
     const [selectedUser, setSelectedUser] = useState<UserInfo | undefined>(undefined)
+
+    useEffect(() => {
+        load_schedules_state( setUsers , setShifts)
+    }, []);
 
     const updateWidth = () => {
         if (timetableRef.current) {
@@ -34,10 +40,28 @@ export function SchedulerGrid () {
 
 
     const get_users = () => {
+        console.log(shifts)
+
         if (searchName == ""){
-            return users
+            return users.map(
+                user => ({
+                    ...user,
+                    availabilities : user.availabilities.filter( a => inCurrentWeek(a.start) ),
+                    shifts: shifts.filter(shift => shift.employee === user.name).filter(
+                        shift => inCurrentWeek(shift.date.start)
+                    ),
+                })
+            )
         }
-        return users.filter( e => e.name.toLocaleLowerCase().includes(searchName.toLocaleLowerCase()))
+        return users.filter( e => e.name.toLocaleLowerCase().includes(searchName.toLocaleLowerCase())).map(
+            user => ({
+                ...user,
+                availabilities : user.availabilities.filter( a => inCurrentWeek(a.start) ),
+                shifts: shifts.filter(shift => shift.employee === user.name).filter(
+                    shift => inCurrentWeek(shift.date.start)
+                ),
+            })
+        )
     }
 
     function weekDetailsToString( details:any ){
@@ -62,6 +86,15 @@ export function SchedulerGrid () {
         return { firstDayOfWeek, lastDayOfWeek, month, year };
     }
 
+    function inCurrentWeek(date : Date){
+
+        const date1 = getWeekDetails(date).firstDayOfWeek;
+        const date2 = getWeekDetails(selectedWeek).firstDayOfWeek;
+        return date1.getDate() === date2.getDate() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getFullYear() === date2.getFullYear();
+    }
+
     const calculateSlotPositionAndWidth = (start: Date, end: Date) => {
         const startMinutes = getMinutesFromWeekStart(start);
         const endMinutes = getMinutesFromWeekStart(end);
@@ -74,19 +107,50 @@ export function SchedulerGrid () {
     };
 
 
-    const renderSlots = (slots: any[]) => {
-         return slots.map((slot, index) => {
+    const renderSlots = (shifts: ShiftInfo[]) => {
+         return shifts.map((shift, index) => {
+            const slot = shift.date
             const { left, width } = calculateSlotPositionAndWidth(slot.start , slot.end);
 
             return (
                 <div key={index} style={{ left, width }} 
-                className="absolute bg-green-500 overflow-hidden h-12 p-1 pl-2 text-sm rounded-sm -top-6"
+                className="absolute bg-green-500 overflow-hidden h-12 p-1 pl-2 text-sm rounded-sm -top-6 z-10"
                 >
-                    { slot.detail } { slot.type }
+                    { shift.details }
                 </div>
             );
         });
     };
+
+    const renderAvailabilities = (slots: UserSlot[]) => {
+        return slots.map((slot, index) => {
+           const { left, width } = calculateSlotPositionAndWidth(slot.start , slot.end);
+
+           // change color based on slot.details which be a string : "DESIRED" "UNDESIRED" "UNAVAILABLE"
+            let bgColor;
+            switch (slot.details) {
+                case "DESIRED":
+                    bgColor = "bg-blue-500/50"; // Example color for DESIRED
+                    break;
+                case "UNDESIRED":
+                    bgColor = "bg-yellow-500/50"; // Example color for UNDESIRED
+                    break;
+                case "UNAVAILABLE":
+                    bgColor = "bg-red-500/50"; // Example color for UNAVAILABLE
+                    break;
+                default:
+                    bgColor = "bg-gray-500/50"; // Default color if none of the cases match
+            }
+
+           return (
+               <div key={index} style={{ left, width }} 
+               className={`absolute ${bgColor} overflow-hidden h-12 p-1 pl-2 text-sm rounded-sm -top-6`}
+               >
+                   { slot.details }
+               </div>
+           );
+       });
+   };
 
     return (
 
@@ -101,9 +165,17 @@ export function SchedulerGrid () {
                 className="border-left w-full relative top-0
                 flex flex-row justify-around
                 ">
-                    <div> <FaAngleLeft className="w-8 h-8 fill-green-600 cursor-pointer"/> </div>
+                    <div> <FaAngleLeft className="w-8 h-8 fill-green-600 cursor-pointer" onClick={e =>{
+                        const nextWeek = new Date(selectedWeek);
+                        nextWeek.setDate(nextWeek.getDate() - 7);
+                        setSelectedWeek(nextWeek);
+                    }}/> </div>
                     <div> { weekDetailsToString(getWeekDetails(selectedWeek)) } </div> 
-                    <div> <FaAngleRight className="w-8 h-8 fill-green-600 cursor-pointer"/> </div>                     
+                    <div> <FaAngleRight className="w-8 h-8 fill-green-600 cursor-pointer" onClick={e =>{
+                        const nextWeek = new Date(selectedWeek);
+                        nextWeek.setDate(nextWeek.getDate() + 7);
+                        setSelectedWeek(nextWeek);
+                    }}/> </div>                     
                 </div>
             </div>
 
@@ -160,8 +232,11 @@ export function SchedulerGrid () {
                             ref={timetableRef}
                             className="border-left w-full relative top-0"
                             >
-                                {renderSlots(u.slots)}                                
+                                {renderSlots(u.shifts)}  
+                                {renderAvailabilities(u.availabilities)}                              
                             </div>
+
+                            
 
                         </div> } 
                 )

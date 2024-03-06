@@ -11,96 +11,87 @@ type UserInfo = {
     id: string;
     name: string;
     image: string;
-    slots: UserSlot[];
+    skills : string[];
+    availabilities: UserSlot[];
+
 };
 
-let demoUsers : UserInfo[] = [
-    {
-        name:"Etienne",
-        image:"profiles/2.png",
-        id:"0",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"1" },
-            { start: new Date(2024, 0, 1, 13, 0), end: new Date(2024, 0, 2, 15, 0), details:"" ,type:"1" },
-        ]
-    },
-    {
-        name:"Milos",
-        image:"profiles/1.png",
-        id:"1",
-        slots : [
-            { start: new Date(2024, 0, 17, 4, 0), end: new Date(2024, 0, 17, 15, 0), details:"" ,type:"2" },
-            { start: new Date(2024, 0, 18, 13, 0), end: new Date(2024, 0, 19, 15, 0), details:"" ,type:"1" },
-        ]
-    },
-    {
-        name:"Renata",
-        image:"profiles/3.png",
-        id:"2",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"",type:"3"  },
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:"",type:"3" },
-        ]
-    },
-    {
-        name:"Paul",
-        image:"profiles/4.png",
-        id:"3",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"1" },
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:"" ,type:"2" },
-        ]
-    },
-    {
-        name:"Eliot",
-        image:"profiles/5.png",
-        id:"4",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"2" },
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:"" ,type:"1" },
-        ]
-    },
-    {
-        name:"Sara",
-        image:"profiles/6.png",
-        id:"5",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"1" },
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:"" ,type:"3" },
-        ]
-    },
-    {
-        name:"Ayoub",
-        image:"profiles/7.png",
-        id:"6",
-        slots : [
-            { start: new Date(2024, 0, 17, 9, 0), end: new Date(2024, 0, 17, 11, 0), details:"" ,type:"2"},
-            { start: new Date(2024, 0, 12, 13, 0), end: new Date(2024, 0, 13, 10, 0), details:""  ,type:"2"},
-        ]
-    }
-]
+type ShiftInfo = {
+    employee : string;
+    requiredSkill : string;
+    details: string;
+    date : UserSlot;
+};
+
+type UserInfoWithShifts = UserInfo & {
+    shifts: ShiftInfo[];
+};
 
 const usersState = atom<UserInfo[]>({
     key: 'usersState',
-    default: demoUsers, 
+    default: [], 
 });
 
-const allUsersSelector = selector({
+const shiftsState = atom<ShiftInfo[]>({
+    key: 'shiftsState',
+    default: [], 
+});
+
+const allUsersSelector = selector<UserInfoWithShifts[]>({
     key: 'allUsersSelector',
     get: ({get}) => {
         const users = get(usersState);
-        return users;
+        const shifts = get(shiftsState);
+        return users.map(user => ({
+            ...user,
+            shifts: shifts.filter(shift => shift.employee === user.name),
+        }));
     },
 });
 
-const userByIdSelector = selector({
-    key: 'userByIdSelector',
-    get: ({get}) => (id: string) => {
-        const users = get(usersState);
-        return users.find(user => user.id === id);
-    },
-});
+export function load_schedules_state ( setUsers : any , setShifts:any ) {
 
-export { usersState, allUsersSelector, userByIdSelector };
-export type { UserInfo, UserSlot };
+    const fetchUsers = async () => {
+        const response = await fetch('http://localhost:8080/schedule');
+        const data = await response.json();
+        const users: UserInfo[] = data.employees.map((employee: { name: any; skills: any; }) => {
+            const availabilities: UserSlot[] = data.availabilities
+                .filter((avail: { employee: { name: any; }; }) => avail.employee.name === employee.name)
+                .map((avail: { date: string | number | Date; availabilityType: any; }) => ({
+                    start: new Date(avail.date),
+                    end: new Date(new Date(avail.date).setHours(20, 59, 59, 999)),
+                    details: avail.availabilityType,
+                    type: 'Availability',
+                }));
 
+            return {
+                id: employee.name, 
+                name: employee.name,
+                image: "profiles/2.png",
+                skills: employee.skills,
+                availabilities,
+            };
+        });
+        const shifts: ShiftInfo[] = data.shifts
+                .map((shift: any) => (
+                {
+                employee : shift.employee?.name,
+                requiredSkill : shift.requiredSkill,
+                details: shift.location,
+                 date:  {
+                        start: new Date(shift.start),
+                        end: new Date(shift.end),
+                        details: "",
+                        type: "",
+                    }
+                }
+                ));
+        setUsers(users)
+        setShifts(shifts)
+
+    };
+    fetchUsers().catch(console.error);
+} 
+
+export { usersState, allUsersSelector , shiftsState };
+export type { UserInfo, UserSlot , ShiftInfo };
