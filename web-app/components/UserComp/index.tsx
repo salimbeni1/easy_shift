@@ -13,7 +13,7 @@ export function UserComp ({
 } : UserInfoProps ) {
     return (
         <>
-            <div className=" min-w-80 min-h-80 border bg-white p-5 ">
+            <div className="border bg-white p-5 ">
                 
                 <div className="flex items-center gap-4 mb-4">
                     <div className="w-12 h-12 rounded-full overflow-hidden">
@@ -22,10 +22,8 @@ export function UserComp ({
                     <div> {user.name} </div>
                 </div>
                 <div>
-                    <h3>Absences</h3>   
-                    <h3>Regles</h3>    
+                    <div>Skills : {JSON.stringify(user.skills)} </div>
                 </div>
-
             </div>
         </>
     );
